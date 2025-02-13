@@ -4,6 +4,7 @@ import * as db from './config/db';
 import dotenv from 'dotenv';
 import { logInfo } from './utils/logger';
 import userRoutes from './routes/userRoutes';
+import photoRoutes from './routes/photoRoutes';
 
 dotenv.config({ path: '../.env' });  // Load environment variables from .env file
 
@@ -20,7 +21,11 @@ app.use(cors({
 app.use(express.json());
 
 async function initialize_database() {
-    await db.connectToMongoDB();
+    const [success, result] = await db.connectToMongoDB();
+    if (!success) {
+        logInfo('Failed to connect to MongoDB', result);
+        throw result;
+    }
     logInfo('Connected to MongoDB');
 }
 
@@ -31,3 +36,4 @@ initialize_database().then(() => {
 });
 
 app.use('/users', userRoutes);
+app.use('/photos', photoRoutes);

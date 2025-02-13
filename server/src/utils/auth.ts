@@ -11,21 +11,21 @@ export interface AuthRequest extends Request {
     userId?: string;
 }
 
-export function generateToken(userId: string): string {
+export async function generateToken(userId: string) {
     try {
         if (!SECRET_KEY) {
             throw new Error('JWT secret key not found');
         }
         const payload = { userId };
         const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
-        return token;
+        return [true, token];
     } catch (error) {
         logInfo(error);
-        return '';
+        return [false, error as Error];
     }
 }
 
-export function verifyToken(token: string): { updatedToken: string } {
+export async function verifyToken(token: string) {
     try {
         if (!SECRET_KEY) {
             throw new Error('JWT secret key not found');
@@ -35,12 +35,38 @@ export function verifyToken(token: string): { updatedToken: string } {
         }
         const payload = jwt.verify(token, SECRET_KEY);
         const decodedpayload = jwt.decode(token);
+        logInfo('Decoded payload:', decodedpayload);
         const updatedToken = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
         
         return { updatedToken };
     }
     catch(error) {
         logInfo(error);
-        return { updatedToken: '' };
+        return { updatedToken: (error as any) };
+    }
+}
+
+export async function extractPayload(token: string) {
+    logInfo("Token:", token);
+    try {
+        if (!SECRET_KEY) {
+            return [false, Error('JWT secret key not found')];
+        }
+        if (!token) {
+            return [false, Error('No token provided')];
+        }
+        //const payload = jwt.verify(token, SECRET_KEY);
+        const decodedpayload = jwt.decode(token);
+        if (!decodedpayload) {
+            return [false, Error('Error decoding token')];
+        }
+        const userId = (decodedpayload as jwt.JwtPayload).userId;
+        logInfo("Decoded payload:", decodedpayload);
+        logInfo('User ID:', userId);
+        return [true, userId];
+    }
+    catch(error) {
+        logInfo(error);
+        return [false, error as Error];
     }
 }

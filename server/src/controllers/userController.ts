@@ -5,10 +5,30 @@ import bcrypt from 'bcrypt'
 import { logInfo } from '../utils/logger'
 import * as db from '../config/db'
 import * as auth from '../utils/auth'
+import crypto from 'crypto'
+import nodemailer from 'nodemailer'
 
 dotenv.config();
 
-const SALT_ROUNDS = process.env.SALT_ROUNDS;
+export const createAdminUser = async (req: Request, res: Response) => {
+    try {
+        const ADMIN_USER = process.env.ADMIN_USER;
+        const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+        const hashedPassword = await bcrypt.hash((ADMIN_PASSWORD as string), 10);
+        const [success, result] = await db.addUser("admin", "admin@admin.com", (ADMIN_USER as string), hashedPassword);
+        if (success) {
+            logInfo("Admin user created successfully");
+            return res.status(200).json({ message: "Admin user created successfully" });
+        } else {
+            logInfo("Error creating admin user: ", result);
+            return res.status(500).json({ error: "Failed to create admin user", details: result });
+        } 
+    } catch (error) {
+        logInfo("Error creating admin user: ", error);
+        return res.status(500).json({ error: "Error creating admin user" });
+    }
+}
 
 export const createUser = async (req: Request, res: Response) => {
     const { name, email, username, password } = req.body;
@@ -87,8 +107,8 @@ export const loginUser = async (req: Request, res: Response) => {
             logInfo("Login failed: invalid password");
             return res.status(401).json({ error: "Invalid password" });
         }
-
-        const authToken = auth.generateToken((result as any)._id);
+        logInfo("userid:", (result as any)._id);
+        const authToken = await auth.generateToken((result as any)._id);
         logInfo("Login successful. Login token: ", authToken);
         return res.status(200).json({ message: "Login successful", token: authToken });
     } catch (error) {

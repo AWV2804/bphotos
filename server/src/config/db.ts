@@ -5,11 +5,13 @@ import fs from 'fs';
 import { logInfo } from '../utils/logger';
 import { User } from '../models/userModel';
 import { Photo } from '../models/photoModel';
+import bcrypt from 'bcrypt';
 
 dotenv.config();  // Load environment variables from .env file
 
 let gridFSBucket: GridFSBucket | null = null;
 
+// #region Mongo
 export async function connectToMongoDB() {
   const SERVER_MONGO_USER = process.env.SERVER_MONGO_USER;
   const SERVER_MONGO_PASSWORD = process.env.SERVER_MONGO_PASSWORD;
@@ -17,8 +19,8 @@ export async function connectToMongoDB() {
   const uri = `mongodb://${SERVER_MONGO_USER}:${SERVER_MONGO_PASSWORD}@localhost:27017/bphotos?authSource=admin`;
 
   if (!SERVER_MONGO_USER || !SERVER_MONGO_PASSWORD) {
-    console.error('MongoDB username or password not provided');
-    return [false, 'MongoDB username or password not provided'];
+    logInfo('MongoDB username or password not provided');
+    return [false, Error('MongoDB username or password not provided')];
   }
   try {
     const connection = await mongoose.connect(uri);
@@ -33,8 +35,8 @@ export async function connectToMongoDB() {
       
     return [true, connection];
   } catch (error) {
-    console.error('Error connecting to MongoDB: ', error);
-    return [false, error];
+    logInfo('Error connecting to MongoDB: ', error);
+    return [false, error as Error];
   }
 }
 
@@ -44,15 +46,18 @@ export async function disconnectMongoDB(db: mongoose.Connection) {
     logInfo('Database deleted successfully');
     return [true, success];
   } catch (error) {
-    console.error('Error deleting database: ', error);
-    return [false, error];
+    logInfo('Error deleting database: ', error);
+    return [false, error as Error];
   }
 }
 
+// #endregion
+
+// #region GridFS
 export async function uploadFileToGridFS(filePath: string, filename: string) {
   try {
     if (!gridFSBucket) {
-      throw new Error('GridFSBucket is not initialized. Call connectToMongoDB first.');
+      return Error('GridFSBucket is not initialized. Call connectToMongoDB first.');
     }
 
     const uploadStream = gridFSBucket.openUploadStream(filename);
@@ -64,20 +69,20 @@ export async function uploadFileToGridFS(filePath: string, filename: string) {
         resolve(uploadStream.id); // This is the GridFS file ID
       });
       uploadStream.on('error', (err) => {
-        console.error('Error uploading file to GridFS:', err);
+        logInfo('Error uploading file to GridFS:', err);
         reject(err);
       });
     });
   } catch (error) {
-    console.error('Error in uploadFileToGridFS:', error);
-    throw error;
+    logInfo('Error in uploadFileToGridFS:', error as Error);
+    return error as Error;
   }
 }
-// #region workd
+
 export async function downloadFileFromGridFS(fileId: string, outputPath: string) {
   try {
     if (!gridFSBucket) {
-      throw new Error('GridFSBucket is not initialized. Call connectToMongoDB first.');
+      return [false, Error('GridFSBucket is not initialized. Call connectToMongoDB first.')];
     }
 
     const downloadStream = gridFSBucket.openDownloadStream(new mongoose.Types.ObjectId(fileId));
@@ -85,22 +90,86 @@ export async function downloadFileFromGridFS(fileId: string, outputPath: string)
 
     downloadStream.pipe(fileStream);
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       fileStream.on('finish', () => {
         logInfo(`File downloaded successfully to: ${outputPath}`);
-        resolve(outputPath);
+        resolve([true, outputPath]);
       });
       fileStream.on('error', (err) => {
-        console.error('Error downloading file from GridFS:', err);
-        reject(err);
+        logInfo('Error downloading file from GridFS:', err);
+        resolve([false, err]);
       });
     });
   } catch (error) {
-    console.error('Error in downloadFileFromGridFS:', error);
-    throw error;
+    logInfo('Error in downloadFileFromGridFS:', error);
+    return [false, error as Error];
   }
 }
 
+export async function clearGridFSBucket() {
+  try {
+    if (!gridFSBucket) {
+      return Error('GridFSBucket is not initialized. Call connectToMongoDB first.');
+    }
+
+    const files = await gridFSBucket.find().toArray();
+    for (const file of files) {
+      const deletedFile = await gridFSBucket.delete(file._id);
+      logInfo(deletedFile);
+    }
+
+    logInfo('All GridFS files deleted');
+    return true
+  } catch (error) {
+    logInfo('Error deleting all GridFS files:', error);
+    return false;
+  }
+}
+
+export async function deletePhoto(photoId: string) {
+  try {
+
+    // Check if db connection is initialized
+    const db = mongoose.connection.db;
+    if (!db) {
+      logInfo('Database connection is undefined. Call connectToMongoDB first.');
+      return [false, Error('Database connection is undefined. Call connectToMongoDB first.')];
+    }
+
+    // Check if GridFSBucket is initialized
+    if (!gridFSBucket) {
+      logInfo('GridFSBucket is not initialized. Call connectToMongoDB first.');
+      return [false, Error('GridFSBucket is not initialized. Call connectToMongoDB first.')];
+    }
+
+    const objectId = new mongoose.Types.ObjectId(photoId);
+    // Check if entry is in photos collection
+    const photo = await Photo.findOne({ _id: photoId });
+    if (!photo) {
+      logInfo('Photo not found');
+      return [false, Error('Photo not found')];
+    }
+
+    // Delete file from GridFS
+    const gridFSFileId = new mongoose.Types.ObjectId(photo.gridFSFileId.toString());
+    await gridFSBucket.delete(gridFSFileId);
+    logInfo('File deleted from GridFS with gridFSFileId:', gridFSFileId);
+
+    // Delete from photos collection
+    const result = await Photo.deleteOne({ _id: objectId });
+    if (result.deletedCount == 0) {
+      logInfo('Error deleting photo');
+      return [false, Error('Error deleting photo')];
+    }
+    return [true, null];
+  } catch(error) {
+    logInfo('Error deleting photo:', error);
+    return [false, error as Error];
+  }
+}
+
+// #endregion
+// #region User
 export async function getUserByEmail(email: string) {
   try {
     const user = await User.findOne({ email: email });
@@ -112,7 +181,7 @@ export async function getUserByEmail(email: string) {
     return [true, user];
   } catch (error) {
     logInfo('Error getting user by email:', error);
-    return [false, error];
+    return [false, error as Error];
   }
 }
 
@@ -127,7 +196,7 @@ export async function getUserByUsername(username: string) {
     return [true, user];
   } catch (error) {
     logInfo('Error getting user by username:', error);
-    return [false, error];
+    return [false, error as Error];
   }
 }
 
@@ -154,7 +223,7 @@ export async function addUser(name: string, email: string, username: string, pas
     return [true, result];
   } catch (error) {
     logInfo('Error adding user:', error);
-    return [false, error];
+    return [false, error as Error];
   }
 }
 
@@ -170,7 +239,7 @@ export async function removeUserByName(username: string) {
     return [true, result];
   } catch (error) {
     logInfo('Error deleting user:', error);
-    return [false, error];
+    return [false, error as Error];
   }
 }
 
@@ -181,9 +250,30 @@ export async function getAllUsers() {
     return [true, users];
   } catch (error) {
     logInfo('Error getting all users:', error);
-    return [false, error];
+    return [false, error as Error];
   }
 }
+
+export async function createAdminUser() {
+  try {
+    const adminUser = await User.findOne({ username: 'admin' });
+    if (adminUser) {
+      logInfo('Admin user already exists');
+      return [false, Error('Admin user already exists')];
+    }
+    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD as string, 10);
+    const [success, result] = await addUser("admin", "admin@admin.com", (process.env.ADMIN_USER as string), hashedPassword);
+    if (success) {
+      logInfo('Admin user created:', result);
+      return [true, result];
+    }
+  } catch (error) {
+    logInfo('Error creating admin user:', error);
+    return [false, error as Error];
+  }
+}
+// #endregion
+
 /*
 Temp Tests
 */
@@ -229,7 +319,7 @@ Temp Tests
 //     await newPhoto.save();
 //     console.log('Photo saved:', newPhoto);
 //   } catch (error) {
-//     console.error('Error testing schemas:', error);
+//     logInfo('Error testing schemas:', error);
 //   }
 // }
 
@@ -251,6 +341,10 @@ Temp Tests
 //     logInfo('Users found:', (user as any)._id.toString());
 //   }
 // }
-
+// async function deleteGridFS() {
+//   await connectToMongoDB();
+//   await deleteAllGridFS();
+// }
+// deleteGridFS();
 // testFindUser();
 // testDownloadPictureGridFS();

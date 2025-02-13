@@ -1,18 +1,23 @@
 import * as exifr from 'exifr';
 import * as fs from 'fs';
+import { logInfo } from './logger';
 
-async function getMetadata(filePath: string) {
+export async function getMetadata(filePath: string) {
     try {
-        const metadata = await exifr.parse(filePath);
-        const metadataJson = JSON.stringify(metadata, null, 2);
-        console.log(metadataJson);
-        return metadataJson;
+        const metadata = await exifr.parse(filePath, true);
+        const metadataStringified = JSON.stringify(metadata, null, 2);
+        logInfo(metadata);
+        return [true, metadata, metadataStringified];
     } catch (error) {
-        console.error('Error reading metadata:', error);
-        throw error;
+        logInfo('Error reading metadata:', error);
+        return [false, error, null];
     }
 }
 
 // Example usage
-const photoPath = '/home/athar/Documents/bphotos/server/tests/DownloadedTestPhotos/Yellowstone Day 1 016_downloaded.jpg';
-getMetadata(photoPath);
+// const photoPath = '/home/athar/Documents/bphotos/SamplePhotos/Sofa Location.HEIC';
+// getMetadata(photoPath);
+// (async () => {
+//     const [success, metadata, metadataStringified] = await getMetadata(photoPath);
+//     logInfo(metadata)
+// })();
