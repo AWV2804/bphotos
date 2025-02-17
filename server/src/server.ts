@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { logInfo } from './utils/logger';
 import userRoutes from './routes/userRoutes';
 import photoRoutes from './routes/photoRoutes';
+import { setupSwagger } from './docs/swagger';
 
 dotenv.config({ path: '../.env' });  // Load environment variables from .env file
 
@@ -20,6 +21,9 @@ app.use(cors({
 
 app.use(express.json());
 
+// Initialize swagger
+setupSwagger(app);
+
 async function initialize_database() {
     const [success, result] = await db.connectToMongoDB();
     if (!success) {
@@ -31,9 +35,11 @@ async function initialize_database() {
 
 initialize_database().then(() => {
     app.listen(BACKEND_PORT, () => {
-        logInfo(`Server running on port ${BACKEND_PORT}`);
+        logInfo(`Server running on http://localhost:${BACKEND_PORT}`);
+        logInfo(`Swagger Docs available at http://localhost:${BACKEND_PORT}/api-docs`);
     });
 });
 
+// Routes
 app.use('/users', userRoutes);
 app.use('/photos', photoRoutes);
