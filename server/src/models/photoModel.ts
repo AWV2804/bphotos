@@ -4,6 +4,7 @@ export interface IPhoto extends mongoose.Document {
     userId: mongoose.Schema.Types.ObjectId;
     filename: string;
     gridFSFileId: mongoose.Schema.Types.ObjectId;
+    contentType: string;
     dateTaken?: Date;
     size?: number;
     tags?: string[];
@@ -27,6 +28,7 @@ export interface IPhoto extends mongoose.Document {
     userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
     filename: { type: String, required: true },
     gridFSFileId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    contentType: { type: String, required: true },
     dateTaken: { type: Date },
     size: { type: Number },
     tags: { type: [String] },
