@@ -404,6 +404,28 @@ export async function createAdminUser() {
         return [false, error as Error];
     }
 }
+
+export async function getUserIdfromPhotoId(photoId: string) {
+    const db = mongoose.connection.db;
+    if (!db) {
+        logInfo('Database connection is undefined. Call connectToMongoDB first.');
+        return Error('Database connection is undefined. Call connectToMongoDB first.');
+    }
+
+    try {
+        const photo = await Photo.findById(photoId);
+        if (!photo) {
+            logInfo('Photo not found');
+            return Error('Photo not found');
+        }
+        const userId = photo.userId;
+        logInfo(`User ID for photo with id ${photoId}: ${userId}`);
+        return userId;
+    } catch(error) {
+        logInfo(`Error getting user ID for photo with id ${photoId}:`, error);
+        return error as Error;
+    }
+}
 // #endregion
 
 // #region Photo
@@ -537,6 +559,115 @@ export async function renamePhotoinPhotosCollection(photoId: string, newFilename
         return true;
     } catch (error) {
         logInfo(`Error renaming photo in photos collection with idL ${photoId.toString()}:`, error);
+        return error as Error;
+    }
+}
+
+export async function updateTags(photoId: string, newTags: string[]) {
+    const db = mongoose.connection.db;
+    if (!db) {
+        logInfo('Database connection is undefined. Call connectToMongoDB first.');
+        return Error('Database connection is undefined. Call connectToMongoDB first.');
+    }
+    try {
+        const photo = await Photo.findById(photoId);
+        if (!photo) {
+            logInfo('Photo not found');
+            return Error('Photo not found');
+        }
+        const result = await Photo.updateOne({ _id: photoId }, { tags: newTags });
+        if (result.modifiedCount == 0) {
+            logInfo('Error updating tags');
+            return Error('Error updating tags');
+        }
+        logInfo(`Photo with id: ${photoId} updated with tags: ${newTags}`);
+        return true;
+    } catch (error) {
+        logInfo(`Error updating tags for photo with id ${photoId}:`, error);
+        return error as Error;
+    }
+}
+
+export async function updateDescription(photoId: string, newDescription: string) {
+    const db = mongoose.connection.db;
+    if (!db) {
+        logInfo('Database connection is undefined. Call connectToMongoDB first.');
+        return Error('Database connection is undefined. Call connectToMongoDB first.');
+    }
+
+    try {
+        const photo = await Photo.findById(photoId);
+        if (!photo) {
+            logInfo('Photo not found');
+            return Error('Photo not found');
+        }
+        const result = await Photo.updateOne({ _id: photoId }, { description: newDescription });
+        if (result.modifiedCount == 0) {
+            logInfo('Error updating description');
+            return Error('Error updating description');
+        }
+        logInfo(`Photo with id: ${photoId} updated with description: ${newDescription}`);
+        return true;
+    } catch (error) {
+        logInfo(`Error updating description for photo with id ${photoId}:`, error);
+        return error as Error;
+    }
+}
+
+export async function updateIsFavorite(photoId: string) {
+    const db = mongoose.connection.db;
+    if (!db) {
+        logInfo('Database connection is undefined. Call connectToMongoDB first.');
+        return Error('Database connection is undefined. Call connectToMongoDB first.');
+    }
+
+    try {
+        const photo = await Photo.findById(photoId);
+        if (!photo) {
+            logInfo('Photo not found');
+            return Error('Photo not found');
+        }
+        const newIsFavorite = !photo.isFavorite;
+        const result = await Photo.updateOne({ _id: photoId }, { isFavorite: newIsFavorite });
+        if (result.modifiedCount == 0) {
+            logInfo('Error updating isFavorite');
+            return Error('Error updating isFavorite');
+        }
+        logInfo(`Photo with id: ${photoId} updated with isFavorite: ${newIsFavorite}`);
+        return true;
+    } catch (error) {
+        logInfo(`Error updating isFavorite for photo with id ${photoId}:`, error);
+        return error as Error;
+    }
+}
+
+/**
+ * Retrieves the photo ID and photo document from the database using the provided GridFS file ID.
+ *
+ * @param gridFSFileId - The ID of the GridFS file as a string.
+ * @returns A promise that resolves to an array containing the photo ID and the photo document if found,
+ *          or an Error object if the database connection is undefined or the photo is not found.
+ *          In case of an exception, it returns the error as an Error object.
+ */
+export async function getPhotoIdfromGridFSId(gridFSFileId: string) {
+    const db = mongoose.connection.db;
+    if (!db) {
+        logInfo('Database connection is undefined. Call connectToMongoDB first.');
+        return Error('Database connection is undefined. Call connectToMongoDB first.');
+    }
+
+    try {
+        const gridFSId = new mongoose.Types.ObjectId(gridFSFileId);
+        const photo = await Photo.findOne({ gridFSFileId: gridFSId });
+        if (!photo) {
+            logInfo('Photo not found');
+            return Error('Photo not found');
+        }
+        const photoId = photo._id;
+        logInfo(`Photo ID for GridFS file with id ${gridFSFileId}: ${photoId}`);
+        return [photoId, photo];
+    } catch(error) {
+        logInfo(`Error getting photo ID for GridFS file with id ${gridFSFileId}:`, error);
         return error as Error;
     }
 }
