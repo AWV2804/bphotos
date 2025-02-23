@@ -42,7 +42,7 @@ npm install
 Create a `.env` file in the root directory with the following content:
 ```
 SERVER_MONGO_USER=admin
-SERVER_MONGO_PASSWORD=Fernandoalonso14
+SERVER_MONGO_PASSWORD=[Enter a secure password here]
 ```
 Replace `yourUsername` and `yourPassword` with your MongoDB credentials.
 
