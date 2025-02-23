@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadPhoto, deletePhoto, getPhotos, downloadPhoto, renamePhoto } from '../controllers/photoController';
+import { uploadPhoto, deletePhoto, getPhotos, downloadPhoto, renamePhoto, updateMetadata, toggleFavorite } from '../controllers/photoController';
 
 const router = Router();
 const upload = multer({ dest: 'uploads/' });
@@ -21,6 +21,13 @@ const upload = multer({ dest: 'uploads/' });
  *     tags: [Photos]
  *     security:
  *       - BearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
  *     requestBody:
  *       required: true
  *       content:
@@ -56,6 +63,12 @@ router.post('/upload', upload.single('photo'), uploadPhoto);
  *     security:
  *       - BearerAuth: []
  *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
  *       - in: path
  *         name: id
  *         required: true
@@ -86,6 +99,12 @@ router.delete('/delete/:id', deletePhoto);
  *     security:
  *       - BearerAuth: []
  *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
  *       - in: query
  *         name: userId
  *         required: true
@@ -98,16 +117,50 @@ router.delete('/delete/:id', deletePhoto);
  *         schema:
  *           type: string
  *           format: date-time
- *         description: Filter by date taken
+ *         description: Filter by date taken (ISO 8601 format)
  *       - in: query
  *         name: tags
  *         required: false
  *         schema:
  *           type: string
  *         description: Comma-separated tags to filter photos
+ *       - in: query
+ *         name: isFavorite
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *         description: Filter by favorite status (true/false)
  *     responses:
  *       200:
  *         description: Successfully retrieved photos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     description: The unique ID of the photo
+ *                   userId:
+ *                     type: string
+ *                     description: ID of the user who uploaded the photo
+ *                   filename:
+ *                     type: string
+ *                     description: Name of the file
+ *                   dateTaken:
+ *                     type: string
+ *                     format: date-time
+ *                     description: Date when the photo was taken
+ *                   tags:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Tags associated with the photo
+ *                   isFavorite:
+ *                     type: boolean
+ *                     description: Whether the photo is marked as a favorite
  *       400:
  *         description: Missing required parameters
  *       403:
@@ -127,6 +180,12 @@ router.get('/', getPhotos);
  *     security:
  *       - BearerAuth: []
  *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
  *       - in: path
  *         name: gridFSFileId
  *         required: true
@@ -157,6 +216,12 @@ router.get('/download/:gridFSFileId', downloadPhoto);
  *     security:
  *       - BearerAuth: []
  *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
  *       - in: path
  *         name: id
  *         required: true
@@ -188,4 +253,91 @@ router.get('/download/:gridFSFileId', downloadPhoto);
  *         description: Internal server error
  */
 router.patch('/rename/:id', renamePhoto);
+
+/**
+ * @swagger
+ * /photos/updateMetadata/{id}:
+ *   patch:
+ *     summary: Update photo metadata
+ *     description: Update the metadata of a photo, including tags and description.
+ *     tags: [Photos]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the photo to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of tags associated with the photo
+ *               description:
+ *                 type: string
+ *                 description: Description of the photo
+ *     responses:
+ *       200:
+ *         description: Metadata updated successfully
+ *       400:
+ *         description: Missing required parameters
+ *       403:
+ *         description: Unauthorized, missing authentication token
+ *       404:
+ *         description: Photo not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/updateMetadata/:id', updateMetadata);
+
+/**
+ * @swagger
+ * /photos/toggleFavorite/{id}:
+ *   patch:
+ *     summary: Toggle favorite status of a photo
+ *     description: Mark a photo as favorite or remove it from favorites.
+ *     tags: [Photos]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token for authentication
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the photo to update
+ *     responses:
+ *       200:
+ *         description: Favorite status toggled successfully
+ *       400:
+ *         description: Missing required parameters
+ *       403:
+ *         description: Unauthorized, missing authentication token
+ *       404:
+ *         description: Photo not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/toggleFavorite/:id', toggleFavorite);
 export default router;

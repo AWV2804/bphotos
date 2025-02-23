@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { logInfo } from './logger';
+import { getUserIdfromPhotoId } from '../config/db';
 
 dotenv.config();
 
@@ -130,3 +131,35 @@ export async function extractPayload(token: string) {
         return [false, error as Error];
     }
 }
+
+export async function isPhotoOwner(authToken: string, photoId: string) {
+    const [successUserIdToken, userIdToken] = await extractPayload(authToken);
+        if (!successUserIdToken) {
+            logInfo("Error extracting user ID from token");
+            return Error("Error extracting user ID from token");
+        }
+
+        const userIdPhoto = await getUserIdfromPhotoId(photoId);
+        if (userIdPhoto instanceof Error) {
+            logInfo("Error getting user ID from photo ID: ", userIdPhoto);
+            return userIdPhoto;
+        }
+        logInfo("User ID from photo: ", userIdPhoto.toString());
+        logInfo("User ID from token: ", userIdToken.toString());
+        if (userIdPhoto.toString() != userIdToken.toString()) {
+            logInfo("Unauthorized user");
+            return Error("Unauthorized user");
+        }
+        return true;
+}
+
+// Test function for extractPayload
+// async function testExtractPayload() {
+//     const token = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiI2N2FkOTdjYjQ0YzQwOGM3MTk4NjgzYjkifQ.jJSNCtrT1g-vnZ8SgWsekSjodbAU5arK6rVuZ_k_iQQ";
+//     const [success, userId] = await extractPayload(token);
+//     logInfo("userid reg:", userId);
+//     logInfo("stringed user id:", userId.toString());
+//     logInfo("json stringified userid:", JSON.stringify(userId));
+// }
+
+// testExtractPayload();
