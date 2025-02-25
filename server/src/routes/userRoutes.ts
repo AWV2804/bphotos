@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { createUser, deleteUser, loginUser, createAdminUser } from '../controllers/userController';
+import { loginRateLimiter } from '../utils/security';
 
 const router = Router();
 
@@ -127,7 +128,7 @@ router.delete('/delete', deleteUser);
  *       500:
  *         description: Internal server error
  */
-router.post('/login', loginUser);
+router.post('/login', loginRateLimiter, loginUser);
 
 
 /**

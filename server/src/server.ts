@@ -6,6 +6,7 @@ import { logInfo } from './utils/logger';
 import userRoutes from './routes/userRoutes';
 import photoRoutes from './routes/photoRoutes';
 import { setupSwagger } from './docs/swagger';
+import { applySecurityHeaders, apiRateLimiter, logSecurityHeaders } from './utils/security';
 
 dotenv.config({ path: '../.env' });  // Load environment variables from .env file
 
@@ -13,9 +14,18 @@ const app = express();
 const BACKEND_PORT = process.env.BACKEND_PORT || 3000;
 const FRONTEND_PORT = process.env.FRONTEND_PORT || 3001;
 
+// Apply security headers using Helmet
+app.use(applySecurityHeaders);
+
+// Log security headers application
+app.use(logSecurityHeaders);
+
+// Apply general API rate limiter
+app.use(apiRateLimiter);
+
 app.use(cors({
     origin: `http://localhost:${FRONTEND_PORT}`,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
 }));
 
