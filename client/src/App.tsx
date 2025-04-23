@@ -1,16 +1,22 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import GetStartedPage from "./pages/GetStartedPage";
+import PhotosPage from "./pages/PhotosPage";
+import Header from "./Header";
 
 const App = () => {
   return (
-    <Router>
+    <div>
+      <Header />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<div>Login Page</div>} />
-        <Route path="/signup" element={<div>Signup Page</div>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/get-started" element={<GetStartedPage />} />
+        <Route path="/photos" element={<PhotosPage />} />
       </Routes>
-    </Router>
+    </div>
   );
 };
 
-export default App; 
+export default App;

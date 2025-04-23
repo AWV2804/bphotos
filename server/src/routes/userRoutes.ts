@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createUser, deleteUser, loginUser, createAdminUser } from '../controllers/userController';
+import { createUser, deleteUser, loginUser, getAllUsers, createAdminUser } from '../controllers/userController';
 import { loginRateLimiter } from '../utils/security';
 
 const router = Router();
@@ -130,20 +130,64 @@ router.delete('/delete', deleteUser);
  */
 router.post('/login', loginRateLimiter, loginUser);
 
-
 /**
  * @swagger
  * /users/admin:
  *   post:
- *     summary: Create an admin user
+ *     summary: Create an admin user if no user exists
  *     description: Registers an admin user.
  *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - username
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *               password:
+ *                 type: string
+ *                 example: "SecureP@ssword123"
  *     responses:
  *       200:
  *         description: Admin user created successfully
+ *       400:
+ *         description: Bad request, missing required fields
+ *       403:
+ *         description: Admin user already exists
  *       500:
  *         description: Internal server error
  */
 router.post('/admin', createAdminUser);
+
+/**
+ * @swagger
+ * /users/all:
+ *   get:
+ *     summary: Get all users
+ *     description: Retrieves a list of all users in the system.
+ *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/all', getAllUsers);
 
 export default router;

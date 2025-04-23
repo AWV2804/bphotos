@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Backend for bphotos, a self-hosted photo storage solution",
   "scripts": {
-    "start:backend": "tsx src/server.ts"
+    "start": "tsx src/server.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

@@ -191,10 +191,9 @@ export const getPhotos = async (req: Request, res: Response) => {
 
 export const downloadPhoto = async (req: Request, res: Response) => {
     const authToken = req.headers['authorization'];
-    // The id is the gridFSFileId NOT the _id
     const { gridFSFileId } = req.params;
 
-    if (!authToken || authToken == '' || authToken == null || authToken.trim() == '') {
+    if (!authToken || authToken.trim() === '') {
         logInfo("Missing Authentication Header");
         return res.status(403).json({ error: "Missing Authentication Header" });
     }
@@ -209,15 +208,15 @@ export const downloadPhoto = async (req: Request, res: Response) => {
             logInfo("Invalid or expired token");
             return res.status(403).json({ error: "Invalid or expired token" });
         }
-        
+
+        // Retrieve photo metadata
         const result = await db.getPhotoIdfromGridFSId(gridFSFileId);
         if (result instanceof Error) {
             logInfo("Photo not found");
             return res.status(404).json({ error: "Photo not found" });
         }
-        
+
         const [photoId, photo] = result as [mongoose.Types.ObjectId, IPhoto];
-        
         if (!photo) {
             logInfo("Photo not found");
             return res.status(404).json({ error: "Photo not found" });
@@ -225,37 +224,28 @@ export const downloadPhoto = async (req: Request, res: Response) => {
 
         const successIsOwner = await auth.isPhotoOwner(authToken, photoId.toString());
         if (successIsOwner instanceof Error || !successIsOwner) {
-            logInfo("Error checking if user is photo owner");
-            return res.status(500).json({ error: successIsOwner });
+            logInfo("Unauthorized user");
+            return res.status(403).json({ error: "Unauthorized user" });
         }
 
+        // Download file from GridFS
         const filestream = await db.downloadFileFromGridFS(gridFSFileId.toString());
-        if (!filestream) {
-            logInfo("File not found in GridFS");
-            return res.status(500).json({ error: "File not found in GridFS" });
-        }
-        if (filestream instanceof Error) {
+        if (!filestream || filestream instanceof Error) {
             logInfo("Error downloading file from GridFS", filestream);
             return res.status(500).json({ error: "Error downloading file from GridFS" });
         }
-        const contentType = photo.contentType || null;
-        if (contentType == null) {
-            logInfo("There was an error displaying the image");
-            return res.status(500).json({ error: "There was an error displaying the image" });
-        }
-        
-        const extension = contentType.split('/')[1];
-        const filenameWithExtension = `${photo.filename}.${extension}`;
-        res.set('Content-Type', contentType as string);
-        logInfo("content type:", contentType as string);
-        res.set('Content-Disposition', `attachment; filename=${filenameWithExtension}`);
-        logInfo("filename:", filenameWithExtension);
+
+        const contentType = photo.contentType || 'image/jpeg';
+        res.set('Content-Type', contentType);
+        logInfo("Serving image with content type:", contentType);
+
+        // Stream the file to the response
         filestream.pipe(res);
     } catch (error) {
         logInfo("Error downloading photo: ", error);
         return res.status(500).json({ error: "Error downloading photo" });
     }
-}
+};
 
 export const renamePhoto = async (req: Request, res: Response) => {
     const authToken = req.headers['authorization'];

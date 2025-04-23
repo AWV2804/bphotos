@@ -74,14 +74,19 @@ export async function verifyToken(token: string) {
             token = token.slice(7);
         }
 
-        const payload = jwt.verify(token, SECRET_KEY);
-        const updatedToken = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
+        // Decode the token
+        const payload = jwt.verify(token, SECRET_KEY) as jwt.JwtPayload;
 
-        const decodedpayload = jwt.decode(updatedToken as string);
-        const decodedpayload2 = jwt.decode(token);
+        // Remove `exp` and `iat` fields before re-signing
+        const { exp, iat, ...payloadWithoutExp } = payload;
 
-        logInfo('Decoded payload with verified:', decodedpayload);
-        logInfo('Decoded payload with original:', decodedpayload2);
+        // Generate a new token with the same payload but a fresh expiration
+        const updatedToken = jwt.sign(payloadWithoutExp, SECRET_KEY, { expiresIn: '1h' });
+
+        const decodedUpdatedToken = jwt.decode(updatedToken as string);
+
+        logInfo('Decoded new token:', decodedUpdatedToken);
+        logInfo('Original token payload:', payload);
 
         return { updatedToken: `Bearer ${updatedToken}` };  // Add "Bearer " prefix
     }
