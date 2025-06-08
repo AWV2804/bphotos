@@ -1,0 +1,1 @@
+// Remove all code in this file, as SelectionMode is no longer needed. 
